@@ -1,0 +1,121 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// SQLite doesn't support Enums natively, using String with validation
+// Role: ADMIN, TECHNICIAN, OPERATOR
+// EquipmentStatus: OPERATIONAL, MAINTENANCE, DOWN, RETIRED
+// WorkOrderStatus: PENDING, IN_PROGRESS, COMPLETED, CANCELLED
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  password      String
+  role          String    @default("OPERATOR")
+  image         String?
+  workOrders    WorkOrder[] @relation("AssignedTechnician")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Equipment {
+  id            String          @id @default(cuid())
+  name          String
+  brand         String          // Caterpillar, Komatsu, etc.
+  model         String
+  serialNumber  String          @unique
+  year          Int
+  status        String          @default("OPERATIONAL")
+  currentHours  Float           @default(0)
+  lastService   DateTime?
+  
+  // Geolocation
+  latitude      Float?
+  longitude     Float?
+  
+  workOrders    WorkOrder[]
+  maintenancePlans MaintenancePlan[]
+  
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+}
+
+model MaintenancePlan {
+  id            String    @id @default(cuid())
+  name          String    // e.g., "Cambio de aceite 500h"
+  description   String?
+  hourInterval  Float?    // Interval in engine hours
+  dayInterval   Int?      // Interval in days
+  equipment     Equipment @relation(fields: [equipmentId], references: [id])
+  equipmentId   String
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model WorkOrder {
+  id              String          @id @default(cuid())
+  orderNumber     String          @unique
+  description     String
+  status          String          @default("PENDING")
+  priority        Int             @default(1) // 1: Low, 2: Medium, 3: High, 4: Critical
+  
+  equipment       Equipment       @relation(fields: [equipmentId], references: [id])
+  equipmentId     String
+  
+  assignedTo      User?           @relation("AssignedTechnician", fields: [assignedToId], references: [id])
+  assignedToId    String?
+  
+  startDate       DateTime?
+  endDate         DateTime?
+  
+  partsUsed       PartUsage[]
+  logs            MaintenanceLog[]
+
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+}
+
+model Part {
+  id          String      @id @default(cuid())
+  name        String
+  partNumber  String      @unique
+  description String?
+  stock       Int         @default(0)
+  minStock    Int         @default(5)
+  price       Float?
+  
+  usages      PartUsage[]
+  
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+model PartUsage {
+  id            String    @id @default(cuid())
+  quantity      Int
+  workOrder     WorkOrder @relation(fields: [workOrderId], references: [id])
+  workOrderId   String
+  part          Part      @relation(fields: [partId], references: [id])
+  partId        String
+  
+  createdAt     DateTime  @default(now())
+}
+
+model MaintenanceLog {
+  id            String    @id @default(cuid())
+  message       String
+  workOrder     WorkOrder @relation(fields: [workOrderId], references: [id])
+  workOrderId   String
+  
+  createdAt     DateTime  @default(now())
+}

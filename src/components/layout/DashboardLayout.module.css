@@ -1,0 +1,19 @@
+.layoutWrapper {
+  display: flex;
+  min-height: 100vh;
+  background: var(--bg-deep);
+}
+
+.mainContent {
+  flex: 1;
+  margin-left: var(--sidebar-width);
+  display: flex;
+  flex-direction: column;
+}
+
+.pageBody {
+  padding: 2rem;
+  max-width: 1600px;
+  width: 100%;
+  margin: 0 auto;
+}
